@@ -2,7 +2,7 @@ services:
   - type: web
     name: cryptonews-api
     runtime: node
-    plan: free
+    plan: starter
     rootDir: backend
     buildCommand: npm install
     startCommand: node src/index.js
