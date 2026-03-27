@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crypto Pulse — Admin Panel</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --surface: #111b2e;
+    --surface2: #182438;
+    --border: rgba(255,255,255,0.08);
+    --accent: #28d8a5;
+    --accent2: #4f8ef7;
+    --danger: #f76b6b;
+    --warn: #f5a623;
+    --text: #e8f0ff;
+    --muted: #6f89a8;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+  /* ── Layout ── */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo h2 { color: var(--accent); font-size: 16px; letter-spacing: 1px; }
+  .sidebar-logo p { color: var(--muted); font-size: 11px; margin-top: 3px; }
+  .nav { margin-top: 12px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; border-left: 3px solid transparent; color: var(--muted); transition: all .15s; font-size: 13px; user-select: none; }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(40,216,165,0.07); }
+  .nav-item .icon { font-size: 16px; }
+  .main { flex: 1; padding: 28px 36px; overflow-y: auto; }
+
+  /* ── Auth ── */
+  .auth-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px; width: 340px; }
+  .auth-card h2 { color: var(--accent); margin-bottom: 6px; }
+  .auth-card p { color: var(--muted); font-size: 12px; margin-bottom: 24px; }
+
+  /* ── Header ── */
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .page-title { font-size: 22px; font-weight: 700; }
+  .page-title span { color: var(--accent); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(40,216,165,0.12); border: 1px solid rgba(40,216,165,0.3); border-radius: 999px; padding: 4px 12px; font-size: 12px; color: var(--accent); }
+  .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── Stats grid ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .stat-value { font-size: 32px; font-weight: 700; color: var(--text); }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.accent2 { color: var(--accent2); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Chart bar ── */
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 28px; }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent2); min-height: 4px; transition: height .4s; }
+  .bar-label { font-size: 9px; color: var(--muted); white-space: nowrap; }
+  .bar-val { font-size: 10px; color: var(--text); }
+
+  /* ── Table ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+  .table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .table-info { font-size: 12px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .pill-admin { background: rgba(245,166,35,0.15); color: var(--warn); }
+  .pill-user { background: rgba(79,142,247,0.15); color: var(--accent2); }
+  .pill-high { background: rgba(247,107,107,0.15); color: var(--danger); }
+  .pill-urgent { background: rgba(247,107,107,0.25); color: var(--danger); }
+  .pill-normal { background: rgba(79,142,247,0.15); color: var(--accent2); }
+  .pill-low { background: rgba(111,137,168,0.18); color: var(--muted); }
+  .text-muted { color: var(--muted); }
+  .text-danger { color: var(--danger); }
+  .text-accent { color: var(--accent); }
+  .truncate { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Pagination ── */
+  .pagination { display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding-top: 4px; }
+  .pagination button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .pagination button:disabled { opacity: .4; cursor: default; }
+  .pagination span { color: var(--muted); font-size: 12px; }
+
+  /* ── Forms + inputs ── */
+  label { display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px; margin-top: 14px; text-transform: uppercase; letter-spacing: .5px; }
+  input, textarea, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 18px; border-radius: 9px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: opacity .15s, transform .1s; }
+  .btn:hover { opacity: .88; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-danger { background: rgba(247,107,107,0.15); color: var(--danger); border: 1px solid rgba(247,107,107,0.3); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 7px; }
+  .btn-group { display: flex; gap: 8px; margin-top: 18px; }
+
+  /* ── Modals ── */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 520px; max-width: 94vw; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .modal-sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+
+  /* ── Settings section ── */
+  .settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 18px; }
+  .settings-section h3 { font-size: 14px; margin-bottom: 16px; color: var(--accent2); }
+  .settings-row { display: flex; gap: 12px; }
+  .settings-row .field-wrap { flex: 1; }
+  .field-wrap { display: flex; flex-direction: column; }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 5px; }
+
+  /* ── Toast ── */
+  #toast { position: fixed; bottom: 28px; right: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 20px; font-size: 13px; color: var(--text); z-index: 9999; display: none; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+  #toast.show { display: block; animation: toastIn .2s ease; }
+  @keyframes toastIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── Misc ── */
+  .empty-state { padding: 48px 0; text-align: center; color: var(--muted); }
+  .section-divider { height: 1px; background: var(--border); margin: 24px 0; }
+  .loading { opacity: .5; }
+  .online-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; display: inline-block; margin-right: 5px; animation: pulse 1.5s infinite; }
+</style>
+</head>
+<body>
+
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <h2>Admin Girisi</h2>
+    <p>Devam etmek icin admin API anahtarini girin.</p>
+    <label>Admin API Key</label>
+    <input type="password" id="admin-key-input" placeholder="ADMIN_API_KEY" />
+    <div class="btn-group" style="margin-top:18px">
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Giris Yap</button>
+    </div>
+    <p id="auth-error" style="color:var(--danger);font-size:12px;margin-top:12px;display:none"></p>
+  </div>
+</div>
+
+<div id="app" class="app" style="display:none">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h2>CRYPTO PULSE</h2>
+      <p>Admin Panel</p>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+        <span class="icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" data-tab="users" onclick="switchTab('users')">
+        <span class="icon">👥</span> Kullanicilar
+      </div>
+      <div class="nav-item" data-tab="news" onclick="switchTab('news')">
+        <span class="icon">📰</span> Haberler
+      </div>
+      <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+        <span class="icon">⚙️</span> Uygulama Ayarlari
+      </div>
+    </nav>
+    <div style="margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)">
+      <button class="btn btn-secondary btn-sm" style="width:100%" onclick="doLogout()">Cikis</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard">
+      <div class="page-header">
+        <div class="page-title">Dashboard <span>/ Genel Bakis</span></div>
+        <div class="badge"><span class="dot-live"></span> <span id="online-badge">0 online</span></div>
+      </div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-label">Toplam Kullanici</div><div class="stat-value accent2" id="s-users">-</div></div>
+        <div class="stat-card"><div class="stat-label">Toplam Haber</div><div class="stat-value" id="s-news">-</div></div>
+        <div class="stat-card"><div class="stat-label">Push Token</div><div class="stat-value" id="s-tokens">-</div></div>
+        <div class="stat-card"><div class="stat-label">Simdi Online</div><div class="stat-value accent" id="s-online">-</div><div class="stat-sub">son 3 dakika aktif</div></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Son 7 Gun — Yeni Kullanici Kayitlari</div>
+        <div class="bar-chart" id="chart-users"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Son 7 Gun — Yayinlanan Haberler</div>
+        <div class="bar-chart" id="chart-news"></div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div id="tab-users" style="display:none">
+      <div class="page-header">
+        <div class="page-title">Kullanicilar</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input id="user-search" placeholder="E-posta veya isim ara..." style="width:220px" oninput="filterUsers()" />
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <span class="table-info" id="users-count">Yukleniyor...</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Ad</th>
+              <th>E-posta</th>
+              <th>Rol</th>
+              <th>Kayit Tarihi</th>
+              <th>Son Aktiflik</th>
+              <th>Watchlist</th>
+              <th>Alarmlar</th>
+              <th>Islemler</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <button id="users-prev" onclick="usersPage(-1)">&#8592; Onceki</button>
+        <span id="users-page-info">1</span>
+        <button id="users-next" onclick="usersPage(1)">Sonraki &#8594;</button>
+      </div>
+    </div>
+
+    <!-- NEWS -->
+    <div id="tab-news" style="display:none">
+      <div class="page-header">
+        <div class="page-title">Haberler</div>
+        <button class="btn btn-primary btn-sm" onclick="openNewsModal(null)">+ Yeni Haber</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <span class="table-info" id="news-count">Yukleniyor...</span>
+          <input id="news-search" placeholder="Basliga gore ara..." style="width:200px" oninput="filterNews()" />
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Baslik</th>
+              <th>Kaynak</th>
+              <th>Oncelik</th>
+              <th>Coinler</th>
+              <th>Tarih</th>
+              <th>Islemler</th>
+            </tr>
+          </thead>
+          <tbody id="news-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" style="display:none">
+      <div class="page-header">
+        <div class="page-title">Uygulama Ayarlari</div>
+        <button class="btn btn-primary btn-sm" onclick="saveAppSettings()">Kaydet</button>
+      </div>
+      <div class="settings-section">
+        <h3>Genel</h3>
+        <div class="settings-row">
+          <div class="field-wrap">
+            <label>Uygulama Adi</label>
+            <input id="cfg-appName" placeholder="Crypto Pulse" />
+          </div>
+          <div class="field-wrap">
+            <label>Minimum Versiyon (iOS)</label>
+            <input id="cfg-minVersionIos" placeholder="1.0.0" />
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="field-wrap">
+            <label>Bakim Modu</label>
+            <select id="cfg-maintenanceMode">
+              <option value="false">Kapali</option>
+              <option value="true">Acik (uygulama uyari gosterir)</option>
+            </select>
+          </div>
+          <div class="field-wrap">
+            <label>Bakim Mesaji</label>
+            <input id="cfg-maintenanceMessage" placeholder="Sunucumuz bakimda, lutfen bekleyin." />
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Bildirimler</h3>
+        <div class="settings-row">
+          <div class="field-wrap">
+            <label>Push Bildirim Basligi</label>
+            <input id="cfg-pushTitle" placeholder="Crypto Pulse" />
+          </div>
+          <div class="field-wrap">
+            <label>Push Onceligini Zorla</label>
+            <select id="cfg-forcePriority">
+              <option value="">Hayir (haber onceligi kullan)</option>
+              <option value="high">Hepsini High yap</option>
+              <option value="urgent">Hepsini Urgent yap</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Diger</h3>
+        <label>Ozel JSON (herhangi bir anahtar-deger cifti)</label>
+        <textarea id="cfg-custom" rows="5" placeholder='{"key": "value"}'></textarea>
+        <p class="hint">Gecerli JSON olmali. Kaydet butonuyla sunucuya yazilir.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- USER EDIT MODAL -->
+<div id="modal-user" class="modal-backdrop" style="display:none">
+  <div class="modal-card">
+    <div class="modal-title">Kullanici Duzenle</div>
+    <div class="modal-sub" id="modal-user-email"></div>
+    <label>Ad</label>
+    <input id="edit-user-name" />
+    <label>Rol</label>
+    <select id="edit-user-role">
+      <option value="user">user</option>
+      <option value="admin">admin</option>
+    </select>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveUser()">Kaydet</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-user')">Iptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEWS MODAL -->
+<div id="modal-news" class="modal-backdrop" style="display:none">
+  <div class="modal-card">
+    <div class="modal-title" id="news-modal-title">Haber Ekle</div>
+    <div class="modal-sub">Haber olustur veya mevcut haberi duzenle.</div>
+    <input id="edit-news-id" type="hidden" />
+    <label>Baslik *</label>
+    <input id="edit-news-title" placeholder="Haber basligi" />
+    <label>Icerik</label>
+    <textarea id="edit-news-body" rows="4" placeholder="Detay icerik..."></textarea>
+    <label>Oncelik</label>
+    <select id="edit-news-priority">
+      <option value="low">Low</option>
+      <option value="normal" selected>Normal</option>
+      <option value="high">High</option>
+      <option value="urgent">Urgent</option>
+    </select>
+    <label>Coinler (virgul ile ayir: BTC, ETH)</label>
+    <input id="edit-news-coins" placeholder="BTC, ETH, SOL" />
+    <label>Etiketler (virgul ile ayir)</label>
+    <input id="edit-news-tags" placeholder="defi, nft, regulation" />
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveNews()">Kaydet &amp; Yayinla</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-news')">Iptal</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let ADMIN_KEY = "";
+let BASE_URL = "";
+let allUsers = [];
+let allNews = [];
+let usersCurrentPage = 1;
+const USERS_PER_PAGE = 25;
+let editingUserId = null;
+let statsInterval = null;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function apiBase() {
+  if (BASE_URL) return BASE_URL + "/api";
+  return window.location.protocol + "//" + window.location.host + "/api";
+}
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(apiBase() + path, {
+    headers: { "Content-Type": "application/json", "x-admin-key": ADMIN_KEY, ...(opts.headers || {}) },
+    ...opts
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || "API error " + res.status);
+  return body;
+}
+
+function toast(msg, isError = false) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.borderColor = isError ? "rgba(247,107,107,0.4)" : "rgba(40,216,165,0.3)";
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 3000);
+}
+
+function fmt(isoStr) {
+  if (!isoStr) return "-";
+  try { return new Date(isoStr).toLocaleString("tr-TR"); } catch { return isoStr; }
+}
+
+function fmtDate(isoStr) {
+  if (!isoStr) return "-";
+  try { return new Date(isoStr).toLocaleDateString("tr-TR"); } catch { return isoStr; }
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const key = document.getElementById("admin-key-input").value.trim();
+  const err = document.getElementById("auth-error");
+  err.style.display = "none";
+  if (!key) { err.textContent = "API anahtari bos olamaz."; err.style.display = "block"; return; }
+
+  try {
+    ADMIN_KEY = key;
+    await apiFetch("/admin/stats");
+    localStorage.setItem("admin_key", key);
+    document.getElementById("auth-screen").style.display = "none";
+    document.getElementById("app").style.display = "flex";
+    init();
+  } catch (e) {
+    ADMIN_KEY = "";
+    err.textContent = "Giris basarisiz: " + e.message;
+    err.style.display = "block";
+  }
+}
+
+document.getElementById("admin-key-input").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+
+function doLogout() {
+  ADMIN_KEY = "";
+  localStorage.removeItem("admin_key");
+  clearInterval(statsInterval);
+  document.getElementById("app").style.display = "none";
+  document.getElementById("auth-screen").style.display = "flex";
+}
+
+// ─── Auto-login from localStorage ───────────────────────────────────────────
+(async function tryAutoLogin() {
+  const saved = localStorage.getItem("admin_key");
+  if (!saved) return;
+  try {
+    ADMIN_KEY = saved;
+    await apiFetch("/admin/stats");
+    document.getElementById("auth-screen").style.display = "none";
+    document.getElementById("app").style.display = "flex";
+    init();
+  } catch {
+    ADMIN_KEY = "";
+    localStorage.removeItem("admin_key");
+  }
+})();
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+async function init() {
+  await loadStats();
+  await loadUsers();
+  await loadNews();
+  await loadAppSettings();
+  statsInterval = setInterval(loadStats, 15000);
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  ["dashboard", "users", "news", "settings"].forEach(t => {
+    document.getElementById("tab-" + t).style.display = t === tab ? "block" : "none";
+    document.querySelector('[data-tab="' + t + '"]').classList.toggle("active", t === tab);
+  });
+}
+
+function closeModal(id) {
+  document.getElementById(id).style.display = "none";
+}
+
+// ─── Stats / Dashboard ───────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const s = await apiFetch("/admin/stats");
+    document.getElementById("s-users").textContent = s.userCount ?? "-";
+    document.getElementById("s-news").textContent = s.newsCount ?? "-";
+    document.getElementById("s-tokens").textContent = s.tokenCount ?? "-";
+    document.getElementById("s-online").textContent = s.onlineCount ?? 0;
+    document.getElementById("online-badge").textContent = (s.onlineCount ?? 0) + " online";
+    renderBarChart("chart-users", s.recentRegistrations || [], "c", "day", "#4f8ef7");
+    renderBarChart("chart-news", s.recentNews || [], "c", "day", "#28d8a5");
+  } catch (e) {
+    console.warn("stats load failed", e);
+  }
+}
+
+function renderBarChart(containerId, data, valKey, labelKey, color) {
+  const el = document.getElementById(containerId);
+  if (!data.length) { el.innerHTML = '<div class="text-muted" style="font-size:12px">Veri yok.</div>'; return; }
+  const max = Math.max(...data.map(d => d[valKey]), 1);
+  el.innerHTML = data.map(d => `
+    <div class="bar-wrap">
+      <div class="bar-val">${d[valKey]}</div>
+      <div class="bar" style="height:${Math.round((d[valKey]/max)*72)}px;background:${color}"></div>
+      <div class="bar-label">${d[labelKey] ? d[labelKey].slice(5) : ""}</div>
+    </div>
+  `).join("");
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const data = await apiFetch("/admin/users?limit=500");
+    allUsers = data.users || [];
+    renderUsers();
+  } catch (e) {
+    document.getElementById("users-tbody").innerHTML = '<tr><td colspan="8" class="text-danger">Yuklenemedi: ' + e.message + '</td></tr>';
+  }
+}
+
+function filterUsers() {
+  usersCurrentPage = 1;
+  renderUsers();
+}
+
+function usersPage(dir) {
+  const filtered = getFilteredUsers();
+  const maxPage = Math.max(1, Math.ceil(filtered.length / USERS_PER_PAGE));
+  usersCurrentPage = Math.max(1, Math.min(maxPage, usersCurrentPage + dir));
+  renderUsers();
+}
+
+function getFilteredUsers() {
+  const q = (document.getElementById("user-search")?.value || "").trim().toLowerCase();
+  if (!q) return allUsers;
+  return allUsers.filter(u => (u.email + u.name).toLowerCase().includes(q));
+}
+
+function renderUsers() {
+  const filtered = getFilteredUsers();
+  const maxPage = Math.max(1, Math.ceil(filtered.length / USERS_PER_PAGE));
+  const page = Math.min(usersCurrentPage, maxPage);
+  const slice = filtered.slice((page - 1) * USERS_PER_PAGE, page * USERS_PER_PAGE);
+
+  document.getElementById("users-count").textContent = filtered.length + " kullanici";
+  document.getElementById("users-page-info").textContent = "Sayfa " + page + " / " + maxPage;
+  document.getElementById("users-prev").disabled = page <= 1;
+  document.getElementById("users-next").disabled = page >= maxPage;
+
+  if (!slice.length) {
+    document.getElementById("users-tbody").innerHTML = '<tr><td colspan="8" class="empty-state">Kullanici bulunamadi.</td></tr>';
+    return;
+  }
+
+  document.getElementById("users-tbody").innerHTML = slice.map(u => `
+    <tr>
+      <td>${esc(u.name || "-")}</td>
+      <td class="truncate">${esc(u.email)}</td>
+      <td><span class="pill pill-${u.role || 'user'}">${u.role || "user"}</span></td>
+      <td class="text-muted">${fmtDate(u.createdAt)}</td>
+      <td class="text-muted">${fmtDate(u.lastSeen)}</td>
+      <td>${(u.preferences?.watchlist?.length ?? 0)}</td>
+      <td>${(u.preferences?.alerts?.length ?? 0)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="openUserModal('${esc(u.id)}')">Duzenle</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser('${esc(u.id)}', '${esc(u.email)}')">Sil</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function openUserModal(userId) {
+  const u = allUsers.find(u => u.id === userId);
+  if (!u) return;
+  editingUserId = userId;
+  document.getElementById("modal-user-email").textContent = u.email;
+  document.getElementById("edit-user-name").value = u.name || "";
+  document.getElementById("edit-user-role").value = u.role || "user";
+  document.getElementById("modal-user").style.display = "flex";
+}
+
+async function saveUser() {
+  try {
+    const name = document.getElementById("edit-user-name").value.trim();
+    const role = document.getElementById("edit-user-role").value;
+    await apiFetch("/admin/users/" + editingUserId, { method: "PUT",  body: JSON.stringify({ name, role }) });
+    closeModal("modal-user");
+    await loadUsers();
+    toast("Kullanici guncellendi.");
+  } catch (e) {
+    toast("Hata: " + e.message, true);
+  }
+}
+
+async function confirmDeleteUser(userId, email) {
+  if (!confirm(email + " kullanicinizi silmek istediginize emin misiniz?")) return;
+  try {
+    await apiFetch("/admin/users/" + userId, { method: "DELETE" });
+    await loadUsers();
+    toast("Kullanici silindi.");
+  } catch (e) {
+    toast("Hata: " + e.message, true);
+  }
+}
+
+// ─── News ────────────────────────────────────────────────────────────────────
+async function loadNews() {
+  try {
+    const data = await apiFetch("/admin/news?limit=300");
+    allNews = data.items || [];
+    renderNews();
+  } catch (e) {
+    document.getElementById("news-tbody").innerHTML = '<tr><td colspan="6" class="text-danger">Yuklenemedi: ' + e.message + '</td></tr>';
+  }
+}
+
+function filterNews() {
+  renderNews();
+}
+
+function renderNews() {
+  const q = (document.getElementById("news-search")?.value || "").trim().toLowerCase();
+  const items = q ? allNews.filter(n => n.title.toLowerCase().includes(q)) : allNews;
+  document.getElementById("news-count").textContent = items.length + " haber";
+
+  if (!items.length) {
+    document.getElementById("news-tbody").innerHTML = '<tr><td colspan="6" class="empty-state">Haber bulunamadi.</td></tr>';
+    return;
+  }
+
+  document.getElementById("news-tbody").innerHTML = items.map(n => `
+    <tr>
+      <td class="truncate">${esc(n.title)}</td>
+      <td class="text-muted">${esc(n.source)}</td>
+      <td><span class="pill pill-${n.priority}">${n.priority}</span></td>
+      <td class="text-muted">${(n.coins || []).join(", ") || "-"}</td>
+      <td class="text-muted">${fmt(n.createdAt)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="openNewsModal('${esc(n.id)}')">Duzenle</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteNews('${esc(n.id)}')">Sil</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function openNewsModal(newsId) {
+  document.getElementById("edit-news-id").value = newsId || "";
+  if (newsId) {
+    const n = allNews.find(n => n.id === newsId);
+    if (!n) return;
+    document.getElementById("news-modal-title").textContent = "Haber Duzenle";
+    document.getElementById("edit-news-title").value = n.title;
+    document.getElementById("edit-news-body").value = n.body || "";
+    document.getElementById("edit-news-priority").value = n.priority || "normal";
+    document.getElementById("edit-news-coins").value = (n.coins || []).join(", ");
+    document.getElementById("edit-news-tags").value = (n.tags || []).join(", ");
+  } else {
+    document.getElementById("news-modal-title").textContent = "Yeni Haber";
+    document.getElementById("edit-news-title").value = "";
+    document.getElementById("edit-news-body").value = "";
+    document.getElementById("edit-news-priority").value = "normal";
+    document.getElementById("edit-news-coins").value = "";
+    document.getElementById("edit-news-tags").value = "";
+  }
+  document.getElementById("modal-news").style.display = "flex";
+}
+
+async function saveNews() {
+  const id = document.getElementById("edit-news-id").value;
+  const title = document.getElementById("edit-news-title").value.trim();
+  if (!title) { toast("Baslik zorunlu.", true); return; }
+
+  const body = {
+    title,
+    body: document.getElementById("edit-news-body").value.trim() || title,
+    priority: document.getElementById("edit-news-priority").value,
+    coins: document.getElementById("edit-news-coins").value.split(",").map(s => s.trim().toUpperCase()).filter(Boolean),
+    tags: document.getElementById("edit-news-tags").value.split(",").map(s => s.trim().toLowerCase()).filter(Boolean)
+  };
+
+  try {
+    if (id) {
+      await apiFetch("/admin/news/" + id, { method: "PUT", body: JSON.stringify(body) });
+      toast("Haber guncellendi.");
+    } else {
+      await apiFetch("/news/publish", { method: "POST", body: JSON.stringify(body) });
+      toast("Haber yayinlandi.");
+    }
+    closeModal("modal-news");
+    await loadNews();
+  } catch (e) {
+    toast("Hata: " + e.message, true);
+  }
+}
+
+async function confirmDeleteNews(newsId) {
+  if (!confirm("Bu haberi silmek istediginize emin misiniz?")) return;
+  try {
+    await apiFetch("/admin/news/" + newsId, { method: "DELETE" });
+    await loadNews();
+    toast("Haber silindi.");
+  } catch (e) {
+    toast("Hata: " + e.message, true);
+  }
+}
+
+// ─── App Settings ─────────────────────────────────────────────────────────────
+async function loadAppSettings() {
+  try {
+    const s = await apiFetch("/admin/settings");
+    document.getElementById("cfg-appName").value = s.appName || "";
+    document.getElementById("cfg-minVersionIos").value = s.minVersionIos || "";
+    document.getElementById("cfg-maintenanceMode").value = String(s.maintenanceMode === true || s.maintenanceMode === "true");
+    document.getElementById("cfg-maintenanceMessage").value = s.maintenanceMessage || "";
+    document.getElementById("cfg-pushTitle").value = s.pushTitle || "";
+    document.getElementById("cfg-forcePriority").value = s.forcePriority || "";
+    try {
+      const custom = JSON.parse(JSON.stringify(s));
+      ["appName","minVersionIos","maintenanceMode","maintenanceMessage","pushTitle","forcePriority"].forEach(k => delete custom[k]);
+      document.getElementById("cfg-custom").value = Object.keys(custom).length ? JSON.stringify(custom, null, 2) : "";
+    } catch {}
+  } catch (e) {
+    toast("Ayarlar yuklenemedi: " + e.message, true);
+  }
+}
+
+async function saveAppSettings() {
+  const patch = {
+    appName: document.getElementById("cfg-appName").value.trim(),
+    minVersionIos: document.getElementById("cfg-minVersionIos").value.trim(),
+    maintenanceMode: document.getElementById("cfg-maintenanceMode").value === "true",
+    maintenanceMessage: document.getElementById("cfg-maintenanceMessage").value.trim(),
+    pushTitle: document.getElementById("cfg-pushTitle").value.trim(),
+    forcePriority: document.getElementById("cfg-forcePriority").value
+  };
+
+  const customRaw = document.getElementById("cfg-custom").value.trim();
+  if (customRaw) {
+    try {
+      Object.assign(patch, JSON.parse(customRaw));
+    } catch {
+      toast("Ozel JSON gecersiz formatta.", true);
+      return;
+    }
+  }
+
+  try {
+    await apiFetch("/admin/settings", { method: "PUT", body: JSON.stringify(patch) });
+    toast("Ayarlar kaydedildi.");
+  } catch (e) {
+    toast("Hata: " + e.message, true);
+  }
+}
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// Close modals on backdrop click
+document.querySelectorAll(".modal-backdrop").forEach(el => {
+  el.addEventListener("click", (e) => { if (e.target === el) el.style.display = "none"; });
+});
+</script>
+</body>
+</html>
