@@ -7,7 +7,12 @@ dist/
 build/
 coverage/
 backend/data/
+data/
+backend/*.log
+backend/cf-*.log
+backend/cloudflared.log
 .DS_Store
 Thumbs.db
+mobile/
 mobile/keys/
 *.p8
