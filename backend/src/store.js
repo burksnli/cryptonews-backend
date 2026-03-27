@@ -131,11 +131,57 @@ function migrateFromJson(jsonPath){
   console.log("Migration complete.");
 }
 
+function seedInitialNewsIfEmpty(){
+  var count=db.prepare("SELECT COUNT(*) as c FROM news").get().c;
+  if(count>0)return;
+
+  var now=Date.now();
+  var seeded=[
+    {
+      title:"CryptoNews Pro yayinda",
+      body:"Uygulama canliya alindi. Piyasa, haber ve alarm modulleri aktif.",
+      priority:"high",
+      tags:["system","release"],
+      coins:["BTC","ETH"],
+      createdAt:new Date(now-1000*60*8).toISOString()
+    },
+    {
+      title:"Render backend baglantisi aktif",
+      body:"Sunucu artik kalici URL ile hizmet veriyor: cryptonews-api.onrender.com",
+      priority:"normal",
+      tags:["infra","backend"],
+      coins:["BTC"],
+      createdAt:new Date(now-1000*60*6).toISOString()
+    },
+    {
+      title:"Admin panelden haber ekleyebilirsin",
+      body:"/admin ekranindan yeni haber girildikce bu liste otomatik guncellenir.",
+      priority:"normal",
+      tags:["admin","guide"],
+      coins:["BTC","ETH","SOL"],
+      createdAt:new Date(now-1000*60*4).toISOString()
+    },
+    {
+      title:"Fiyat alarmi ozelligi hazir",
+      body:"Coin detay ekranindan +% veya -% alarm ekleyebilir, tetiklenince bildirim alabilirsin.",
+      priority:"normal",
+      tags:["alerts","mobile"],
+      coins:["BTC","SOL"],
+      createdAt:new Date(now-1000*60*2).toISOString()
+    }
+  ];
+
+  seeded.forEach(function(item){
+    try{addNewsItem(item);}catch(e){}
+  });
+}
+
 function tryParse(str,fallback){
   try{return JSON.parse(str);}catch(e){return fallback;}
 }
 
 migrateFromJson(require("path").resolve(process.cwd(),"data","store.json"));
+seedInitialNewsIfEmpty();
 
 module.exports={
   addNewsItem,getNews,getNewsById,updateNewsItem,deleteNewsItem,

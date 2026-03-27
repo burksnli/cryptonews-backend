@@ -21,6 +21,31 @@ function mapMarketCoin(coin) {
   };
 }
 
+function mapCoinLoreCoin(coin) {
+  return {
+    id: String(coin.nameid || coin.symbol || coin.id || "").toLowerCase(),
+    symbol: String(coin.symbol || ""),
+    name: String(coin.name || coin.symbol || ""),
+    image: null,
+    currentPrice: Number(coin.price_usd || 0),
+    marketCapRank: Number(coin.rank || 0) || null,
+    priceChange24h: Number(coin.percent_change_24h || 0),
+    sparkline7d: []
+  };
+}
+
+async function fetchCoinLoreTopCoins(limit = 100) {
+  const res = await http.get("https://api.coinlore.net/api/tickers/", {
+    params: {
+      start: 0,
+      limit
+    }
+  });
+
+  const items = Array.isArray(res.data?.data) ? res.data.data : [];
+  return items.map(mapCoinLoreCoin);
+}
+
 async function getMarketOverview() {
   const [globalRes, coinsRes, fearRes] = await Promise.allSettled([
     http.get(`${COINGECKO_BASE}/global`),
@@ -39,9 +64,17 @@ async function getMarketOverview() {
 
   const globalData = globalRes.status === "fulfilled" ? (globalRes.value.data?.data || {}) : {};
   const fear = fearRes.status === "fulfilled" ? (fearRes.value.data?.data?.[0] || null) : null;
-  const coins = coinsRes.status === "fulfilled" && Array.isArray(coinsRes.value.data)
+  let coins = coinsRes.status === "fulfilled" && Array.isArray(coinsRes.value.data)
     ? coinsRes.value.data.map(mapMarketCoin)
     : [];
+
+  if (!coins.length) {
+    try {
+      coins = await fetchCoinLoreTopCoins(120);
+    } catch (error) {
+      coins = [];
+    }
+  }
 
   return {
     updatedAt: new Date().toISOString(),
