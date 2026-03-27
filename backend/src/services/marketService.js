@@ -1,6 +1,12 @@
 const axios = require("axios");
 
 const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
+const http = axios.create({
+  timeout: 12000,
+  headers: {
+    "User-Agent": "cryptonews-backend/1.0"
+  }
+});
 
 function mapMarketCoin(coin) {
   return {
@@ -16,9 +22,9 @@ function mapMarketCoin(coin) {
 }
 
 async function getMarketOverview() {
-  const [globalRes, coinsRes, fearRes] = await Promise.all([
-    axios.get(`${COINGECKO_BASE}/global`),
-    axios.get(`${COINGECKO_BASE}/coins/markets`, {
+  const [globalRes, coinsRes, fearRes] = await Promise.allSettled([
+    http.get(`${COINGECKO_BASE}/global`),
+    http.get(`${COINGECKO_BASE}/coins/markets`, {
       params: {
         vs_currency: "usd",
         order: "market_cap_desc",
@@ -28,11 +34,14 @@ async function getMarketOverview() {
         price_change_percentage: "24h"
       }
     }),
-    axios.get("https://api.alternative.me/fng/")
+    http.get("https://api.alternative.me/fng/")
   ]);
 
-  const globalData = globalRes.data?.data || {};
-  const fear = fearRes.data?.data?.[0] || null;
+  const globalData = globalRes.status === "fulfilled" ? (globalRes.value.data?.data || {}) : {};
+  const fear = fearRes.status === "fulfilled" ? (fearRes.value.data?.data?.[0] || null) : null;
+  const coins = coinsRes.status === "fulfilled" && Array.isArray(coinsRes.value.data)
+    ? coinsRes.value.data.map(mapMarketCoin)
+    : [];
 
   return {
     updatedAt: new Date().toISOString(),
@@ -50,7 +59,7 @@ async function getMarketOverview() {
           timestamp: fear.timestamp
         }
       : null,
-    coins: coinsRes.data.map(mapMarketCoin)
+    coins
   };
 }
 
